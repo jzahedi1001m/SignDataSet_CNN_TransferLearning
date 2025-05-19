@@ -39,6 +39,15 @@ python3 train_eval.py --mode eval --model TL_resnet18
 python3 train_eval.py --mode eval --model TL_mobilenetv2
 ```
 
+## Trained Models
+
+Due to GitHub file size limits, some of the trained models are hosted externally. So, if you want to reproduce the results, download them and upload them to the trained_models folder. 
+
+🔗 [signresnet50](https://drive.google.com/file/d/139qvg_ZlPrvDNvmlOwwn_v2wiJJ7gUIB/view?usp=drive_link)
+🔗 [TL_resnet18](https://drive.google.com/file/d/1vz94Zc7tXhVsZ70NOhtznwCP-qjTkSmH/view?usp=drive_link)
+
+
+
 ## Output
 
 - Trained model parameters are saved in the `trained_models/` directory  
