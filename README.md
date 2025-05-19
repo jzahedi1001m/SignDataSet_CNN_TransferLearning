@@ -13,18 +13,34 @@ This repository contains models for classifying hand signs representing digits 0
 
 To train all models:
 ```bash
-python3 train.py
+python3 train_eval.py --mode train
 ```
 
 To train a specific model:
 ```bash
-python3 train.py --model signcnn
-python3 train.py --model signresnet50
-python3 train.py --model TL_resnet18
-python3 train.py --model TL_mobilenetv2
+python3 train_eval.py --mode train --model signcnn
+python3 train_eval.py --mode train signresnet50
+python3 train_eval.py --mode train TL_resnet18
+python3 train_eval.py --mode train TL_mobilenetv2
+```
+
+## Training
+
+To train all models:
+```bash
+python3 train_eval.py --mode eval
+```
+
+To train a specific model:
+```bash
+python3 train_eval.py --mode eval --model signcnn
+python3 train_eval.py --mode eval signresnet50
+python3 train_eval.py --mode eval TL_resnet18
+python3 train_eval.py --mode eval TL_mobilenetv2
 ```
 
 ## Output
 
 - Trained model parameters are saved in the `trained_models/` directory  
-- Training and evaluation loss/accuracy plots are saved in the `loo_acc_figs/` directory
+- Training: loss/accuracy plots are saved in the `loo_acc_preds/` directory
+- Evaluation: predicted labels for random samples are plotted and saved in the `loo_acc_preds/` directory
