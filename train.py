@@ -60,12 +60,12 @@ def train_sign_cnn(device, train_loader, val_loader):
     model = SignCnn(num_classes).to(device)
 
     trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-    print(f"Trainable parameters in SignCnn: {trainable_params}")
+    print(f"Trainable parameters: {trainable_params}")
 
     loss_fn = nn.BCEWithLogitsLoss().to(device)
     optimizer = optim.Adam(model.parameters(), lr=0.001)
 
-    results = train_eval(model, train_loader, val_loader, loss_fn, optimizer,
+    results = train_val(model, train_loader, val_loader, loss_fn, optimizer,
                          epochs=200, one_hot_enc=True, device=device)
 
     best_weights, best_acc = results[0], results[1]
@@ -83,7 +83,7 @@ def train_sign_resnet50(device, train_loader, val_loader):
     model = SignResnet50(input_channels=3, num_classes=6).to(device)
 
     trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-    print(f"Trainable parameters in SignResnet50: {trainable_params}")
+    print(f"Trainable parameters: {trainable_params}")
 
     # Use smaller batch size for training and validation loaders
     train_loader = DataLoader(train_loader.dataset, batch_size=32, shuffle=False)
@@ -92,7 +92,7 @@ def train_sign_resnet50(device, train_loader, val_loader):
     loss_fn = nn.BCEWithLogitsLoss().to(device)
     optimizer = optim.Adam(model.parameters(), lr=0.00015)
 
-    results = train_eval(model, train_loader, val_loader, loss_fn, optimizer,
+    results = train_val(model, train_loader, val_loader, loss_fn, optimizer,
                          epochs=15, one_hot_enc=True, device=device)
 
     best_weights, best_acc = results[0], results[1]
@@ -119,7 +119,7 @@ def train_resnet18_transfer(device, X_train_tensor, Y_train_tensor0, X_val_tenso
 
     total_params = sum(p.numel() for p in model.parameters())
     trainable_params = sum(p.numel() for p in model.fc.parameters())
-    print(f"Total parameters in ResNet18: {total_params}, Trainable parameters in ResNet18: {trainable_params}")
+    print(f"Total parameters: {total_params}, Trainable parameters: {trainable_params}")
 
     # Resize input tensors to 244x244
     X_train_resized = resize_tensor_images(X_train_tensor, size=(244, 244))
@@ -133,7 +133,7 @@ def train_resnet18_transfer(device, X_train_tensor, Y_train_tensor0, X_val_tenso
     loss_fn = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.fc.parameters(), lr=0.001)  # Only optimize last layer
 
-    results = train_eval(model, train_loader, val_loader, loss_fn, optimizer,
+    results = train_val(model, train_loader, val_loader, loss_fn, optimizer,
                          epochs=50, one_hot_enc=False, device=device)
 
     best_weights, best_acc = results[0], results[1]
@@ -160,7 +160,7 @@ def train_mobilenet2_transfer(device, X_train_tensor, Y_train_tensor0, X_val_ten
 
     total_params = sum(p.numel() for p in model.parameters())
     trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-    print(f"Total parameters in ResNet18: {total_params}, Trainable parameters in ResNet18: {trainable_params}")
+    print(f"Total parameters: {total_params}, Trainable parameters: {trainable_params}")
 
     # Resize images to 160x160
     X_train_resized = resize_tensor_images(X_train_tensor, size=(160, 160))
@@ -174,7 +174,7 @@ def train_mobilenet2_transfer(device, X_train_tensor, Y_train_tensor0, X_val_ten
     loss_fn = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=0.0001)
 
-    results = train_eval(model, train_loader, val_loader, loss_fn, optimizer,
+    results = train_val(model, train_loader, val_loader, loss_fn, optimizer,
                          epochs=10, one_hot_enc=False, device=device)
 
     best_weights, best_acc = results[0], results[1]
@@ -182,16 +182,7 @@ def train_mobilenet2_transfer(device, X_train_tensor, Y_train_tensor0, X_val_ten
 
     return best_weights
 
-
-def main(name=''):
-
-    device = torch.device("cuda:2" if torch.cuda.is_available() else "cpu")
-    print(f"Using device: {device}")
-
-    # Load and prepare data
-    data_path = os.path.join(os.getcwd(), 'datasets')
-    train_loader, val_loader, X_train_tensor, Y_train_tensor0, X_val_tensor, Y_val_tensor0 = prepare_data(
-        data_path, device)
+def train(train_loader, val_loader, X_train_tensor, Y_train_tensor0, X_val_tensor, Y_val_tensor0, device):
 
     # Train and Save the best model
     output_dir = os.path.join(os.getcwd(), 'trained_models')
@@ -209,7 +200,7 @@ def main(name=''):
         save_path = os.path.join(output_dir, f"{args.model}.pth")
         torch.save(weights, save_path)
         print(f"Saved weights for {args.model} to {save_path}")
-        del weights, results
+        del weights
         torch.cuda.empty_cache()
         gc.collect()
     else:
@@ -222,16 +213,101 @@ def main(name=''):
             torch.cuda.empty_cache()
             gc.collect()
 
+def get_model(name, val_loader, X_val_resized160, X_val_resized244, Y_val_tensor0):
+    
+    if name == 'signresnet50':
+        model = SignResnet50(3, 6)
+        val_loader = DataLoader(val_loader.dataset, batch_size=32, shuffle=False)
+    elif name == 'TL_resnet18':
+        model = models.resnet18(pretrained=True)
+        model.fc = nn.Linear(model.fc.in_features, 6)
+        val_loader = DataLoader(TensorDataset(X_val_resized244, Y_val_tensor0),
+                        batch_size=32, shuffle=False)
+    elif name == 'TL_mobilenetv2':
+        model = SignMobileNetV2(6)
+        val_loader = DataLoader(TensorDataset(X_val_resized160, Y_val_tensor0),
+                        batch_size=32, shuffle=False)
+    else:
+        model = SignCnn(6)
+
+    return model, val_loader
+    
+
+def eval(val_loader, X_val_tensor, Y_val_tensor0, path, device):
+
+    
+    X_val_resized160 = resize_tensor_images(X_val_tensor, size=(160, 160))
+    X_val_resized244 = resize_tensor_images(X_val_tensor, size=(244, 244))
+
+    model_names = ['signcnn', 'signresnet50','TL_resnet18','TL_mobilenetv2']
+    
+    if args.model in model_names:
+        model_path = os.path.join(path, f"{args.model}.pth")
+        if not os.path.exists(model_path):
+            print(f"Checkpoint for {model_name} not found at {model_path}. Please train the model first.")
+            exit()
+        print(f"Evaluation: Trained {args.model}")
+        model, val_loader = get_model(args.model, val_loader, X_val_resized160, X_val_resized244, Y_val_tensor0)
+        model.load_state_dict(torch.load(model_path))     
+        res = model_eval(model, args.model, val_loader, device)
+        acc = res[0]
+        plot_pred_samples(res[1], res[2], title = args.model)
+        
+    else:
+        acc = {}
+        for model_name in model_names:
+            model_path = os.path.join(path, f"{model_name}.pth")
+            if not os.path.exists(model_path):
+                print(f"Checkpoint for {model_name} not found at {model_path}. Please train the model first.")
+                continue
+            print(f"Evaluation: Trained {model_name}")
+            model, val_loader = get_model(model_name, val_loader, X_val_resized160, X_val_resized244, Y_val_tensor0)
+            model.load_state_dict(torch.load(model_path))     
+            res = model_eval(model, model_name, val_loader, device)
+            acc[model_name] = res[0]
+            plot_pred_samples(res[1], res[2], model_name)
+            
+    print(f"accuracy is {acc}") 
+
+
+def main():
+
+    device = torch.device("cuda:2" if torch.cuda.is_available() else "cpu")
+    print(f"Using device: {device}")
+
+    # Load and prepare data
+    data_path = os.path.join(os.getcwd(), 'datasets')
+    train_loader, val_loader, X_train_tensor, Y_train_tensor0, X_val_tensor, Y_val_tensor0 = prepare_data(
+        data_path, device)
+
+
+    if args.mode == 'train':
+        train(train_loader, val_loader, X_train_tensor, Y_train_tensor0, X_val_tensor, Y_val_tensor0, device)
+    else:
+        trained_models_path = os.path.join(os.getcwd(), 'trained_models')
+
+        if not os.path.exists(trained_models_path):
+            print(f"Checkpoint for {trained_models_path} not found. Please train models first.")
+            exit()
+            
+        eval(val_loader, X_val_tensor, Y_val_tensor0, trained_models_path, device)
+
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Run one of the models.')
-    parser.add_argument('--model', type=str, default='', help='Specify which model to run.')
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--mode', type=str, default='eval', help='train or eval')
+    parser.add_argument('--model', type=str, default='', help='specify model')
 
     args = parser.parse_args()
 
-    valid_choices=['signcnn', 'signresnet50', 'TL_resnet18', 'TL_mobilenetv2', '']
+    valid_modes = ['train','eval']
+    valid_models=['signcnn', 'signresnet50', 'TL_resnet18', 'TL_mobilenetv2', '']
+
+    if args.mode not in valid_modes:
+        print(f"Unknown mode:{args.mode}, Please choose train or eval mode")
+        exit()   
     
-    if args.model in valid_choices:
-        main(args.model)
+    if args.model in valid_models:
+        main()
     else:
         print(f"Unknown model: {args.model}")
