@@ -39,7 +39,7 @@ def resize_tensor_images(tensor, size=(244, 244)):
     return F.interpolate(tensor, size=size, mode='bilinear', align_corners=False)
 
 
-def train_eval(model, train_loader, val_loader, loss_func, optimizer, epochs, one_hot_enc = True, device='cpu'):
+def train_val(model, train_loader, val_loader, loss_func, optimizer, epochs, one_hot_enc = True, device='cpu'):
 
     model.to(device)
     train_losses = []
@@ -116,6 +116,34 @@ def train_eval(model, train_loader, val_loader, loss_func, optimizer, epochs, on
             best_model_wts = model.state_dict()
 
     return best_model_wts, best_val_acc, train_losses, val_losses, train_accuracies, val_accuracies
+
+def model_eval(model, model_name, val_loader, one_hot_enc = True, device='cpu'):
+
+    if model_name == 'TL_resnet18' or model_name == 'TL_mobilenetv2':
+        one_hot_enc = False
+
+    model.to(device)
+
+    model.eval()
+    val_correct_preds, val_total_preds = 0, 0
+    with torch.no_grad():  
+        for val_inputs, val_labels in val_loader:
+            val_inputs, val_labels = val_inputs.to(device), val_labels.to(device)
+            val_outputs = model(val_inputs)
+            
+            _, val_preds = torch.max(val_outputs, 1)
+
+            if one_hot_enc:
+                _, true_val_labels = torch.max(val_labels, 1)
+                val_correct_preds += (val_preds == true_val_labels).sum().item()
+                val_total_preds += true_val_labels.size(0)
+            else:
+                val_correct_preds += (val_preds == val_labels).sum().item()
+                val_total_preds += val_labels.size(0)
+
+    accuracy_val = (val_correct_preds / val_total_preds) * 100
+
+    return accuracy_val, val_inputs, true_val_labels if one_hot_enc else val_preds
     
 
 def plot_loss_acc (data, title):
@@ -143,7 +171,7 @@ def plot_loss_acc (data, title):
     axs[1].grid(True)
 
     # Save plot
-    output_dir = os.path.join(os.getcwd(), 'loss_acc_figs')
+    output_dir = os.path.join(os.getcwd(), 'loss_acc_preds')
     os.makedirs(output_dir, exist_ok=True)
     save_path = os.path.join(output_dir, f"{title}_loss_acc.png")
     plt.tight_layout()
@@ -151,3 +179,27 @@ def plot_loss_acc (data, title):
     plt.close()
     gc.collect()
 
+
+def plot_pred_samples(val_inputs, val_preds, title):
+    val_inputs = val_inputs.cpu().permute(0, 2, 3, 1)
+    val_preds = val_preds.cpu()    
+    
+    random_set = random.sample(range(len(val_preds)), 16)
+    
+    fig,axs = plt.subplots(4, 4, figsize=(8,6))
+    for i in range(4):
+        for j in range(4):
+            k = random_set[i*4 + j]
+            ax = axs[i, j]
+            ax.imshow(val_inputs[k])
+            ax.set_title(f"pred:{val_preds[k]}")
+            ax.axis('off')
+    
+    # Save plot
+    output_dir = os.path.join(os.getcwd(), 'loss_acc_preds')
+    os.makedirs(output_dir, exist_ok=True)
+    save_path = os.path.join(output_dir, f"{title}_preds.png")    
+    plt.tight_layout()
+    plt.savefig(save_path)
+    plt.close()
+    gc.collect()
