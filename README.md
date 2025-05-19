@@ -19,9 +19,9 @@ python3 train_eval.py --mode train
 To train a specific model:
 ```bash
 python3 train_eval.py --mode train --model signcnn
-python3 train_eval.py --mode train signresnet50
-python3 train_eval.py --mode train TL_resnet18
-python3 train_eval.py --mode train TL_mobilenetv2
+python3 train_eval.py --mode train --model signresnet50
+python3 train_eval.py --mode train --model TL_resnet18
+python3 train_eval.py --mode train --model TL_mobilenetv2
 ```
 
 ## Evaluation
@@ -34,9 +34,9 @@ python3 train_eval.py --mode eval
 To evaluate a specific model:
 ```bash
 python3 train_eval.py --mode eval --model signcnn
-python3 train_eval.py --mode eval signresnet50
-python3 train_eval.py --mode eval TL_resnet18
-python3 train_eval.py --mode eval TL_mobilenetv2
+python3 train_eval.py --mode eval --model signresnet50
+python3 train_eval.py --mode eval --model TL_resnet18
+python3 train_eval.py --mode eval --model TL_mobilenetv2
 ```
 
 ## Output
