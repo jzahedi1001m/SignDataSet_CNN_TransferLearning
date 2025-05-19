@@ -9,14 +9,14 @@ This repository contains models for classifying hand signs representing digits 0
 - **TL_ResNet18** – Pretrained ResNet-18 (only the final layer fine-tuned)  
 - **TL_MobileNetV2** – Pretrained MobileNetV2 with custom layers (first 180 layers frozen)
 
-## Evaluaiton
+## Training
 
-To evaluate all models:
+To train all models:
 ```bash
 python3 train_eval.py --mode train
 ```
 
-To evaluate a specific model:
+To train a specific model:
 ```bash
 python3 train_eval.py --mode train --model signcnn
 python3 train_eval.py --mode train signresnet50
@@ -24,14 +24,14 @@ python3 train_eval.py --mode train TL_resnet18
 python3 train_eval.py --mode train TL_mobilenetv2
 ```
 
-## Training
+## Evaluation
 
-To train all models:
+To evaluate all models:
 ```bash
 python3 train_eval.py --mode eval
 ```
 
-To train a specific model:
+To evaluate a specific model:
 ```bash
 python3 train_eval.py --mode eval --model signcnn
 python3 train_eval.py --mode eval signresnet50
